@@ -64,34 +64,43 @@ export type Database = {
       }
       menu_items: {
         Row: {
+          calories: number | null
           category: string
           created_at: string | null
           description: string | null
           id: string
           image_url: string | null
+          ingredients: string | null
           is_available: boolean | null
+          is_veg: boolean | null
           name: string
           portion: string | null
           price: number
         }
         Insert: {
+          calories?: number | null
           category: string
           created_at?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          ingredients?: string | null
           is_available?: boolean | null
+          is_veg?: boolean | null
           name: string
           portion?: string | null
           price: number
         }
         Update: {
+          calories?: number | null
           category?: string
           created_at?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          ingredients?: string | null
           is_available?: boolean | null
+          is_veg?: boolean | null
           name?: string
           portion?: string | null
           price?: number
