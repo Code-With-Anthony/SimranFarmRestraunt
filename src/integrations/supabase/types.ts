@@ -254,6 +254,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      increment_coupon_usage: {
+        Args: { coupon_code_param: string }
+        Returns: undefined
+      }
       validate_coupon: {
         Args: { coupon_code_param: string; order_amount: number }
         Returns: {
