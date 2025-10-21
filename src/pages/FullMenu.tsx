@@ -8,6 +8,44 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+// Import all food images
+import dalMakhani from "@/assets/dal-makhani.jpg";
+import dalFry from "@/assets/dal-fry.jpg";
+import butterChicken from "@/assets/butter-chicken.jpg";
+import garlicNaan from "@/assets/garlic-naan.jpg";
+import plainNaan from "@/assets/plain-naan.jpg";
+import cheeseNaan from "@/assets/cheese-naan.jpg";
+import alooParatha from "@/assets/aloo-paratha.jpg";
+import lachhaParatha from "@/assets/lachha-paratha.jpg";
+import tandooriRoti from "@/assets/tandoori-roti.jpg";
+import paneerTikka from "@/assets/paneer-tikka.jpg";
+import paneerButterMasala from "@/assets/paneer-butter-masala.jpg";
+import biryani from "@/assets/biryani.jpg";
+import jeeraRice from "@/assets/jeera-rice.jpg";
+import chickenTikka from "@/assets/chicken-tikka.jpg";
+import mangoLassi from "@/assets/mango-lassi.jpg";
+import vegCurry from "@/assets/veg-curry.jpg";
+
+// Image mapping for menu items
+const imageMap: Record<string, string> = {
+  '/src/assets/dal-makhani.jpg': dalMakhani,
+  '/src/assets/dal-fry.jpg': dalFry,
+  '/src/assets/butter-chicken.jpg': butterChicken,
+  '/src/assets/garlic-naan.jpg': garlicNaan,
+  '/src/assets/plain-naan.jpg': plainNaan,
+  '/src/assets/cheese-naan.jpg': cheeseNaan,
+  '/src/assets/aloo-paratha.jpg': alooParatha,
+  '/src/assets/lachha-paratha.jpg': lachhaParatha,
+  '/src/assets/tandoori-roti.jpg': tandooriRoti,
+  '/src/assets/paneer-tikka.jpg': paneerTikka,
+  '/src/assets/paneer-butter-masala.jpg': paneerButterMasala,
+  '/src/assets/biryani.jpg': biryani,
+  '/src/assets/jeera-rice.jpg': jeeraRice,
+  '/src/assets/chicken-tikka.jpg': chickenTikka,
+  '/src/assets/mango-lassi.jpg': mangoLassi,
+  '/src/assets/veg-curry.jpg': vegCurry,
+};
+
 interface MenuItem {
   id: string;
   category: string;
@@ -101,31 +139,22 @@ const FullMenu = () => {
                     const quantity = getItemQuantity(item.id, item.portion);
                     return (
                       <Card key={`${item.id}-${item.portion}`} className="overflow-hidden shadow-soft hover:shadow-elegant transition-smooth border-border">
-                        {item.image_url && (
-                          <div className="relative h-48 overflow-hidden">
-                            <img 
-                              src={item.image_url} 
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className={`absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center ${item.is_veg ? 'bg-green-500' : 'bg-red-500'}`}>
-                              <div className={`w-3 h-3 rounded-full ${item.is_veg ? 'bg-green-700' : 'bg-red-700'}`} />
-                            </div>
+                        <div className="relative h-48 overflow-hidden bg-muted">
+                          <img 
+                            src={item.image_url ? (imageMap[item.image_url] || item.image_url) : plainNaan} 
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className={`absolute top-3 right-3 w-8 h-8 rounded border-2 flex items-center justify-center ${item.is_veg ? 'bg-white border-green-600' : 'bg-white border-red-600'}`}>
+                            <div className={`w-3 h-3 rounded-full ${item.is_veg ? 'bg-green-600' : 'bg-red-600'}`} />
                           </div>
-                        )}
+                        </div>
                         <CardContent className="p-6">
-                          <div className="flex justify-between items-start mb-3">
+                          <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                {!item.image_url && (
-                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${item.is_veg ? 'bg-green-500' : 'bg-red-500'}`}>
-                                    <div className={`w-2.5 h-2.5 rounded-full ${item.is_veg ? 'bg-green-700' : 'bg-red-700'}`} />
-                                  </div>
-                                )}
-                                <h3 className="font-semibold text-lg text-foreground">
-                                  {item.name}
-                                </h3>
-                              </div>
+                              <h3 className="font-semibold text-lg text-foreground mb-1">
+                                {item.name}
+                              </h3>
                               <p className="text-sm text-muted-foreground">{item.portion}</p>
                             </div>
                             <span className="font-bold text-primary text-xl">
@@ -133,18 +162,26 @@ const FullMenu = () => {
                             </span>
                           </div>
                           
-                          {item.ingredients && (
-                            <div className="mb-3">
-                              <p className="text-xs font-semibold text-foreground mb-1">Ingredients:</p>
-                              <p className="text-xs text-muted-foreground">{item.ingredients}</p>
-                            </div>
-                          )}
-                          
-                          {item.calories && (
-                            <p className="text-xs text-muted-foreground mb-4">
-                              <span className="font-semibold">Calories:</span> {item.calories} kcal
+                          {item.description && (
+                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                              {item.description}
                             </p>
                           )}
+                          
+                          <div className="space-y-2 mb-4">
+                            {item.ingredients && (
+                              <div>
+                                <p className="text-xs font-semibold text-foreground mb-1">Ingredients:</p>
+                                <p className="text-xs text-muted-foreground line-clamp-2">{item.ingredients}</p>
+                              </div>
+                            )}
+                            
+                            {item.calories && (
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-semibold">Calories:</span> {item.calories} kcal
+                              </p>
+                            )}
+                          </div>
                           
                           {quantity > 0 ? (
                             <div className="flex items-center justify-between">
