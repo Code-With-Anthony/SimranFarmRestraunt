@@ -159,6 +159,7 @@ export type Database = {
         Row: {
           coupon_code: string | null
           created_at: string | null
+          customer_email: string
           customer_name: string
           delivery_address: string
           delivery_alternative_mobile: string | null
@@ -175,11 +176,12 @@ export type Database = {
           subtotal: number
           total_amount: number
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           coupon_code?: string | null
           created_at?: string | null
+          customer_email?: string
           customer_name: string
           delivery_address: string
           delivery_alternative_mobile?: string | null
@@ -196,11 +198,12 @@ export type Database = {
           subtotal: number
           total_amount: number
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           coupon_code?: string | null
           created_at?: string | null
+          customer_email?: string
           customer_name?: string
           delivery_address?: string
           delivery_alternative_mobile?: string | null
@@ -217,7 +220,37 @@ export type Database = {
           subtotal?: number
           total_amount?: number
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      otp_verifications: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          mobile: string
+          otp_code: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          mobile: string
+          otp_code: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          mobile?: string
+          otp_code?: string
+          verified?: boolean | null
         }
         Relationships: []
       }
@@ -259,6 +292,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_otps: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string

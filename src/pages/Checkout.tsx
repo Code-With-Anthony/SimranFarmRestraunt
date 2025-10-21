@@ -1,69 +1,45 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Loader2, Tag } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Checkout = () => {
-  const { cart, totalAmount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { cart, clearCart, totalAmount } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
-  const [discount, setDiscount] = useState(0);
+  const [showOTPDialog, setShowOTPDialog] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [tempOrderData, setTempOrderData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     fullName: "",
     mobileNumber: "",
-    alternativeMobileNumber: "",
+    email: "",
+    alternateMobile: "",
     address: "",
     pincode: "",
-    notes: ""
   });
 
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(0);
+
   useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
     if (cart.length === 0) {
       navigate("/cart");
-      return;
     }
-    
-    // Load saved profile data
-    loadProfile();
-  }, [user, cart, navigate]);
-
-  const loadProfile = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (data) {
-      setFormData({
-        fullName: data.full_name || "",
-        mobileNumber: data.mobile_number || "",
-        alternativeMobileNumber: data.alternative_mobile_number || "",
-        address: data.address || "",
-        pincode: data.pincode || "",
-        notes: ""
-      });
-    }
-  };
+  }, [cart, navigate]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -72,24 +48,22 @@ const Checkout = () => {
     }
 
     try {
-      const { data, error } = await supabase.rpc('validate_coupon', {
+      const { data, error } = await supabase.rpc("validate_coupon", {
         coupon_code_param: couponCode.toUpperCase(),
-        order_amount: totalAmount
+        order_amount: totalAmount,
       });
 
       if (error) throw error;
 
-      const result = data[0];
-      if (result.is_valid) {
+      if (data && data[0]?.is_valid) {
         setAppliedCoupon(couponCode.toUpperCase());
-        setDiscount(Number(result.discount_amount) || 0);
-        toast.success(result.message);
+        setDiscount(data[0].discount_amount);
+        toast.success(data[0].message);
       } else {
-        toast.error(result.message);
+        toast.error(data?.[0]?.message || "Invalid coupon");
       }
     } catch (error: any) {
       toast.error("Failed to apply coupon");
-      console.error(error);
     }
   };
 
@@ -100,242 +74,364 @@ const Checkout = () => {
     toast.success("Coupon removed");
   };
 
-  const finalAmount = totalAmount - discount;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
-    
+    if (!formData.fullName || !formData.mobileNumber || !formData.email || !formData.address || !formData.pincode) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(formData.pincode)) {
+      toast.error("Please enter a valid 6-digit pincode");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Save/update user profile
-      await supabase.from('user_profiles').upsert({
-        id: user.id,
-        full_name: formData.fullName,
-        mobile_number: formData.mobileNumber,
-        alternative_mobile_number: formData.alternativeMobileNumber,
-        address: formData.address,
-        pincode: formData.pincode
+      // Store form data temporarily
+      setTempOrderData({
+        formData,
+        finalAmount: totalAmount - discount,
       });
+
+      // Send OTP
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: {
+          email: formData.email,
+          mobile: formData.mobileNumber,
+          customerName: formData.fullName,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("OTP sent to your email");
+      setShowOTPDialog(true);
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast.error("Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      toast.error("Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    setOtpLoading(true);
+
+    try {
+      // Verify OTP
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-otp", {
+        body: {
+          email: formData.email,
+          mobile: formData.mobileNumber,
+          otpCode: otp,
+        },
+      });
+
+      if (verifyError) throw verifyError;
+
+      if (!verifyData?.success) {
+        toast.error(verifyData?.message || "Invalid OTP");
+        return;
+      }
 
       // Create order
       const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          order_number: '', // Will be auto-generated by trigger
-          subtotal: totalAmount,
-          discount_amount: discount,
-          total_amount: finalAmount,
-          coupon_code: appliedCoupon,
+        .from("orders")
+        .insert([{
+          order_number: '',
+          customer_name: formData.fullName,
+          customer_email: formData.email,
+          delivery_mobile: formData.mobileNumber,
+          delivery_alternative_mobile: formData.alternateMobile || null,
           delivery_address: formData.address,
           delivery_pincode: formData.pincode,
-          delivery_mobile: formData.mobileNumber,
-          delivery_alternative_mobile: formData.alternativeMobileNumber || null,
-          customer_name: formData.fullName,
-          notes: formData.notes || null,
-          payment_method: 'pending'
-        })
+          subtotal: totalAmount,
+          discount_amount: discount,
+          total_amount: tempOrderData.finalAmount,
+          coupon_code: appliedCoupon || null,
+        }])
         .select()
         .single();
 
       if (orderError) throw orderError;
 
       // Create order items
-      const orderItems = cart.map(item => ({
+      const orderItems = cart.map((item) => ({
         order_id: order.id,
         menu_item_id: item.id,
+        item_name: item.name,
+        item_category: item.category,
         quantity: item.quantity,
         price_at_time: item.price,
-        item_name: item.name,
-        item_category: item.category
       }));
 
       const { error: itemsError } = await supabase
-        .from('order_items')
+        .from("order_items")
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
 
-      // Update coupon usage if applied
+      // Increment coupon usage if coupon was applied
       if (appliedCoupon) {
-        await supabase.rpc('increment_coupon_usage', {
-          coupon_code_param: appliedCoupon
+        await supabase.rpc("increment_coupon_usage", {
+          coupon_code_param: appliedCoupon,
         });
       }
 
+      // Send order confirmation email
+      await supabase.functions.invoke("send-order-confirmation", {
+        body: {
+          customerName: formData.fullName,
+          customerEmail: formData.email,
+          orderNumber: order.order_number,
+          items: orderItems,
+          subtotal: totalAmount,
+          discountAmount: discount,
+          totalAmount: tempOrderData.finalAmount,
+          couponCode: appliedCoupon,
+          deliveryAddress: formData.address,
+          deliveryMobile: formData.mobileNumber,
+          deliveryPincode: formData.pincode,
+        },
+      });
+
+      toast.success("Order placed successfully! Check your email for confirmation.");
       clearCart();
-      toast.success(`Order placed successfully! Order #${order.order_number}`);
       navigate("/");
     } catch (error: any) {
+      console.error("Error placing order:", error);
       toast.error("Failed to place order. Please try again.");
-      console.error(error);
     } finally {
-      setLoading(false);
+      setOtpLoading(false);
     }
   };
 
+  const finalAmount = totalAmount - discount;
+
+  if (showOTPDialog) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-subtle">
+        <Header />
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <Card className="w-full max-w-md shadow-elegant">
+            <CardHeader className="text-center">
+              <CardTitle className="font-playfair text-3xl">Verify OTP</CardTitle>
+              <p className="text-muted-foreground mt-2">
+                Enter the 6-digit code sent to {formData.email}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <div className="space-y-3">
+                <Button
+                  onClick={handleVerifyOTP}
+                  className="w-full"
+                  disabled={otpLoading || otp.length !== 6}
+                >
+                  {otpLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Verify & Place Order
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setShowOTPDialog(false);
+                    setOtp("");
+                  }}
+                >
+                  Back to Form
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-gradient-subtle">
       <Header />
-      
-      <section className="py-12 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="font-playfair text-4xl font-bold text-foreground mb-8">
-            Checkout
-          </h1>
+      <div className="flex-1 container mx-auto px-6 py-12 max-w-4xl">
+        <h1 className="font-playfair text-4xl font-bold mb-8 text-center">Checkout</h1>
+        
+        <div className="grid md:grid-cols-2 gap-8">
+          <Card className="shadow-elegant">
+            <CardHeader>
+              <CardTitle className="font-playfair">Delivery Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2">
-              <Card className="shadow-soft">
-                <CardHeader>
-                  <CardTitle>Delivery Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name *</Label>
-                      <Input
-                        id="fullName"
-                        required
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mobileNumber">Mobile Number *</Label>
+                  <Input
+                    id="mobileNumber"
+                    value={formData.mobileNumber}
+                    onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                    placeholder="10-digit number"
+                    maxLength={10}
+                    required
+                  />
+                </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="mobile">Mobile Number *</Label>
-                        <Input
-                          id="mobile"
-                          type="tel"
-                          required
-                          pattern="[0-9]{10}"
-                          value={formData.mobileNumber}
-                          onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="altMobile">Alternative Mobile</Label>
-                        <Input
-                          id="altMobile"
-                          type="tel"
-                          pattern="[0-9]{10}"
-                          value={formData.alternativeMobileNumber}
-                          onChange={(e) => setFormData({ ...formData, alternativeMobileNumber: e.target.value })}
-                        />
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="alternateMobile">Alternate Mobile</Label>
+                  <Input
+                    id="alternateMobile"
+                    value={formData.alternateMobile}
+                    onChange={(e) => setFormData({ ...formData, alternateMobile: e.target.value })}
+                    placeholder="Optional"
+                    maxLength={10}
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Delivery Address *</Label>
-                      <Textarea
-                        id="address"
-                        required
-                        rows={3}
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Delivery Address *</Label>
+                  <Textarea
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    rows={3}
+                    required
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="pincode">Pincode *</Label>
-                      <Input
-                        id="pincode"
-                        required
-                        pattern="[0-9]{6}"
-                        maxLength={6}
-                        value={formData.pincode}
-                        onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pincode">Pincode *</Label>
+                  <Input
+                    id="pincode"
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                    placeholder="6-digit pincode"
+                    maxLength={6}
+                    required
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Order Notes (Optional)</Label>
-                      <Textarea
-                        id="notes"
-                        rows={2}
-                        placeholder="Any special instructions..."
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      />
-                    </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Proceed to Verify
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-                    <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                      {loading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Place Order"
-                      )}
+          <div className="space-y-6">
+            <Card className="shadow-elegant">
+              <CardHeader>
+                <CardTitle className="font-playfair">Apply Coupon</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    />
+                    <Button onClick={handleApplyCoupon}>Apply</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-success/10 rounded-lg">
+                    <span className="font-medium text-success">{appliedCoupon} applied!</span>
+                    <Button variant="ghost" size="sm" onClick={handleRemoveCoupon}>
+                      Remove
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-            <div className="space-y-6">
-              <Card className="shadow-soft">
-                <CardHeader>
-                  <CardTitle>Apply Coupon</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {appliedCoupon ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
-                        <Tag className="h-5 w-5 text-primary" />
-                        <span className="font-semibold">{appliedCoupon}</span>
-                      </div>
-                      <Button variant="outline" onClick={handleRemoveCoupon} className="w-full">
-                        Remove Coupon
-                      </Button>
+            <Card className="shadow-elegant">
+              <CardHeader>
+                <CardTitle className="font-playfair">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  {cart.map((item) => (
+                    <div key={`${item.id}-${item.portion}`} className="flex justify-between text-sm">
+                      <span>
+                        {item.name} ({item.portion}) x{item.quantity}
+                      </span>
+                      <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter coupon code"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      />
-                      <Button onClick={handleApplyCoupon}>Apply</Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-elegant border-2 border-primary/20">
-                <CardHeader>
-                  <CardTitle>Order Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal:</span>
+                  ))}
+                </div>
+                
+                <div className="border-t pt-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
                     <span>₹{totalAmount.toFixed(2)}</span>
                   </div>
+                  
                   {discount > 0 && (
-                    <div className="flex justify-between text-primary">
-                      <span>Discount:</span>
+                    <div className="flex justify-between text-success">
+                      <span>Discount</span>
                       <span>-₹{discount.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="border-t pt-3 flex justify-between text-lg font-bold">
-                    <span>Total:</span>
-                    <span className="text-primary">₹{finalAmount.toFixed(2)}</span>
+                  
+                  <div className="flex justify-between font-bold text-lg border-t pt-2">
+                    <span>Total</span>
+                    <span>₹{finalAmount.toFixed(2)}</span>
                   </div>
-                  <div className="text-sm text-muted-foreground pt-2">
-                    {cart.length} items in cart
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </section>
-
+      </div>
       <Footer />
     </div>
   );

@@ -1,13 +1,11 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, User, LogOut } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 
 const Header = () => {
   const { totalItems } = useCart();
-  const { user, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border shadow-soft">
@@ -32,22 +30,6 @@ const Header = () => {
                 )}
               </Button>
             </Link>
-
-            {user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{user.email}</span>
-                <Button variant="outline" size="icon" onClick={signOut}>
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </div>
-            ) : (
-              <Link to="/auth">
-                <Button>
-                  <User className="h-5 w-5 mr-2" />
-                  Login
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
       </div>

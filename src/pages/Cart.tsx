@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
@@ -9,14 +8,9 @@ import Footer from "@/components/Footer";
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, totalAmount, totalItems } = useCart();
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
     navigate("/checkout");
   };
 
@@ -109,7 +103,7 @@ const Cart = () => {
                 </span>
               </div>
               <Button onClick={handleCheckout} size="lg" className="w-full">
-                {user ? "Proceed to Checkout" : "Login to Checkout"}
+                Proceed to Checkout
               </Button>
             </CardContent>
           </Card>
