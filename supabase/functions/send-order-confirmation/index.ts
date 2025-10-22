@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const EMAIL_WEBHOOK_URL = Deno.env.get("EMAIL_WEBHOOK_URL")!;
+const EMAIL_WEBHOOK_SECRET = Deno.env.get("EMAIL_WEBHOOK_SECRET")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +30,13 @@ interface OrderConfirmationRequest {
   deliveryPincode: string;
 }
 
+function bad(message: string, status = 400) {
+  return new Response(JSON.stringify({ success: false, message }), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,7 +45,13 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const orderData: OrderConfirmationRequest = await req.json();
 
-    console.log("Sending order confirmation to:", orderData.customerEmail);
+    // Basic validation
+    if (!orderData?.customerEmail) return bad("customerEmail is required");
+    if (!orderData?.customerName) return bad("customerName is required");
+    if (!orderData?.orderNumber) return bad("orderNumber is required");
+    if (!Array.isArray(orderData?.items) || orderData.items.length === 0) {
+      return bad("items[] is required");
+    }
 
     // Generate items HTML
     const itemsHtml = orderData.items
@@ -138,14 +151,24 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    const emailResponse = await resend.emails.send({
-      from: "Simran Fram & Restraunt <onboarding@resend.dev>",
-      to: [orderData.customerEmail],
-      subject: `Order Confirmation - ${orderData.orderNumber}`,
-      html: emailHtml,
+    const emailResponse = await fetch(EMAIL_WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-email-secret": EMAIL_WEBHOOK_SECRET,
+      },
+      body: JSON.stringify({
+        to: orderData.customerEmail,
+        subject: `Order Confirmation - ${orderData.orderNumber}`,
+        html: emailHtml,
+      }),
     });
 
-    console.log("Order confirmation sent successfully:", emailResponse);
+    if (!emailResponse.ok) {
+      const msg = await emailResponse.text().catch(() => "");
+      console.error("Email webhook failed:", emailResponse.status, msg);
+      return bad("Failed to send confirmation email", 502);
+    }
 
     return new Response(
       JSON.stringify({
