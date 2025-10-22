@@ -8,7 +8,8 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 interface SendOTPRequest {
@@ -24,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { email, mobile, customerName }: SendOTPRequest = await req.json();
-    
+
     console.log("Sending OTP to:", email, mobile);
 
     // Generate 6-digit OTP
@@ -34,18 +35,16 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Clean up any expired OTPs
-    await supabase.rpc('cleanup_expired_otps');
+    await supabase.rpc("cleanup_expired_otps");
 
     // Store OTP in database
-    const { error: dbError } = await supabase
-      .from("otp_verifications")
-      .insert({
-        email,
-        mobile,
-        otp_code: otpCode,
-        expires_at: expiresAt.toISOString(),
-        verified: false,
-      });
+    const { error: dbError } = await supabase.from("otp_verifications").insert({
+      email,
+      mobile,
+      otp_code: otpCode,
+      expires_at: expiresAt.toISOString(),
+      verified: false,
+    });
 
     if (dbError) {
       console.error("Database error:", dbError);
@@ -54,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send OTP via email
     const emailResponse = await resend.emails.send({
-      from: "Restaurant <onboarding@resend.dev>",
+      from: "Simran Fram & Restraunt <anthonydourado111@gmail.com>",
       to: [email],
       subject: "Your Order Verification Code",
       html: `
@@ -75,10 +74,10 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Email sent successfully:", emailResponse);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "OTP sent successfully",
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
       }),
       {
         status: 200,
@@ -87,13 +86,10 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: any) {
     console.error("Error in send-otp function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 

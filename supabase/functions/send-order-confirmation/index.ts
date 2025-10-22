@@ -5,7 +5,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 interface OrderItem {
@@ -36,18 +37,26 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const orderData: OrderConfirmationRequest = await req.json();
-    
+
     console.log("Sending order confirmation to:", orderData.customerEmail);
 
     // Generate items HTML
-    const itemsHtml = orderData.items.map(item => `
+    const itemsHtml = orderData.items
+      .map(
+        (item) => `
       <tr style="border-bottom: 1px solid #eee;">
         <td style="padding: 12px 8px;">${item.item_name}</td>
         <td style="padding: 12px 8px; text-align: center;">${item.quantity}</td>
-        <td style="padding: 12px 8px; text-align: right;">₹${item.price_at_time.toFixed(2)}</td>
-        <td style="padding: 12px 8px; text-align: right;">₹${(item.quantity * item.price_at_time).toFixed(2)}</td>
+        <td style="padding: 12px 8px; text-align: right;">₹${item.price_at_time.toFixed(
+          2
+        )}</td>
+        <td style="padding: 12px 8px; text-align: right;">₹${(
+          item.quantity * item.price_at_time
+        ).toFixed(2)}</td>
       </tr>
-    `).join('');
+    `
+      )
+      .join("");
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -61,10 +70,18 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Your order has been confirmed and is being prepared. Here are your order details:</p>
           
           <div style="background: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <p style="margin: 5px 0;"><strong>Order Number:</strong> ${orderData.orderNumber}</p>
-            <p style="margin: 5px 0;"><strong>Delivery Address:</strong> ${orderData.deliveryAddress}</p>
-            <p style="margin: 5px 0;"><strong>Pincode:</strong> ${orderData.deliveryPincode}</p>
-            <p style="margin: 5px 0;"><strong>Contact:</strong> ${orderData.deliveryMobile}</p>
+            <p style="margin: 5px 0;"><strong>Order Number:</strong> ${
+              orderData.orderNumber
+            }</p>
+            <p style="margin: 5px 0;"><strong>Delivery Address:</strong> ${
+              orderData.deliveryAddress
+            }</p>
+            <p style="margin: 5px 0;"><strong>Pincode:</strong> ${
+              orderData.deliveryPincode
+            }</p>
+            <p style="margin: 5px 0;"><strong>Contact:</strong> ${
+              orderData.deliveryMobile
+            }</p>
           </div>
 
           <h3 style="margin-top: 30px;">Order Summary</h3>
@@ -87,15 +104,23 @@ const handler = async (req: Request): Promise<Response> => {
               <span>Subtotal:</span>
               <span>₹${orderData.subtotal.toFixed(2)}</span>
             </div>
-            ${orderData.discountAmount > 0 ? `
+            ${
+              orderData.discountAmount > 0
+                ? `
               <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #4CAF50;">
-                <span>Discount ${orderData.couponCode ? `(${orderData.couponCode})` : ''}:</span>
+                <span>Discount ${
+                  orderData.couponCode ? `(${orderData.couponCode})` : ""
+                }:</span>
                 <span>-₹${orderData.discountAmount.toFixed(2)}</span>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             <div style="display: flex; justify-content: space-between; margin: 20px 0 0 0; padding-top: 15px; border-top: 1px solid #eee; font-size: 18px; font-weight: bold;">
               <span>Total Amount:</span>
-              <span style="color: #667eea;">₹${orderData.totalAmount.toFixed(2)}</span>
+              <span style="color: #667eea;">₹${orderData.totalAmount.toFixed(
+                2
+              )}</span>
             </div>
           </div>
 
@@ -114,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Restaurant <onboarding@resend.dev>",
+      from: "Simran Fram & Restraunt <anthonydourado111@gmail.com>",
       to: [orderData.customerEmail],
       subject: `Order Confirmation - ${orderData.orderNumber}`,
       html: emailHtml,
@@ -123,9 +148,9 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Order confirmation sent successfully:", emailResponse);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Order confirmation sent successfully" 
+      JSON.stringify({
+        success: true,
+        message: "Order confirmation sent successfully",
       }),
       {
         status: 200,
@@ -134,13 +159,10 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: any) {
     console.error("Error in send-order-confirmation function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 

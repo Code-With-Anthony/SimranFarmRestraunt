@@ -25,6 +25,7 @@ import jeeraRice from "@/assets/jeera-rice.jpg";
 import chickenTikka from "@/assets/chicken-tikka.jpg";
 import mangoLassi from "@/assets/mango-lassi.jpg";
 import vegCurry from "@/assets/veg-curry.jpg";
+import { useNavigate } from "react-router-dom";
 
 // Image mapping for menu items
 const imageMap: Record<string, string> = {
@@ -60,6 +61,7 @@ interface MenuItem {
 }
 
 const FullMenu = () => {
+  const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart, cart, removeFromCart, updateQuantity, totalItems, totalAmount } = useCart();
@@ -118,7 +120,7 @@ const FullMenu = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <section className="py-12 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -140,8 +142,8 @@ const FullMenu = () => {
                     return (
                       <Card key={`${item.id}-${item.portion}`} className="overflow-hidden shadow-soft hover:shadow-elegant transition-smooth border-border">
                         <div className="relative h-48 overflow-hidden bg-muted">
-                          <img 
-                            src={item.image_url ? (imageMap[item.image_url] || item.image_url) : plainNaan} 
+                          <img
+                            src={item.image_url ? (imageMap[item.image_url] || item.image_url) : plainNaan}
                             alt={item.name}
                             className="w-full h-full object-cover"
                           />
@@ -161,13 +163,13 @@ const FullMenu = () => {
                               ₹{item.price}
                             </span>
                           </div>
-                          
+
                           {item.description && (
                             <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                               {item.description}
                             </p>
                           )}
-                          
+
                           <div className="space-y-2 mb-4">
                             {item.ingredients && (
                               <div>
@@ -175,14 +177,14 @@ const FullMenu = () => {
                                 <p className="text-xs text-muted-foreground line-clamp-2">{item.ingredients}</p>
                               </div>
                             )}
-                            
+
                             {item.calories && (
                               <p className="text-xs text-muted-foreground">
                                 <span className="font-semibold">Calories:</span> {item.calories} kcal
                               </p>
                             )}
                           </div>
-                          
+
                           {quantity > 0 ? (
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3 bg-muted rounded-lg p-2">
@@ -246,7 +248,7 @@ const FullMenu = () => {
                   <p className="text-sm text-muted-foreground">{totalItems} {totalItems === 1 ? 'item' : 'items'}</p>
                   <p className="text-2xl font-bold text-primary">₹{totalAmount}</p>
                 </div>
-                <Button size="lg" onClick={() => window.location.href = '/cart'}>
+                <Button size="lg" onClick={() => navigate('/cart')}>
                   View Cart
                   <ShoppingCart className="ml-2 h-5 w-5" />
                 </Button>

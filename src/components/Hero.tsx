@@ -6,7 +6,7 @@ const Hero = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Parallax Effect */}
-      <div 
+      <div
         className="absolute inset-0 parallax"
         style={{
           backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${heroDining})`,
@@ -15,7 +15,7 @@ const Hero = () => {
           backgroundAttachment: 'fixed'
         }}
       />
-      
+
       {/* Content */}
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto animate-fade-in">
         <h1 className="font-playfair text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white">
@@ -29,16 +29,16 @@ const Hero = () => {
           Indulge in authentic cuisine crafted with love, served in an ambiance that echoes warmth and sophistication
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg px-8 py-6 shadow-elegant transition-smooth transform hover:scale-105"
           >
             Reserve Your Table
           </Button>
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             variant="outline"
-            className="border-2 border-white text-white hover:bg-white hover:text-foreground font-semibold text-lg px-8 py-6 transition-smooth transform hover:scale-105"
+            className="border-2 border-white hover:bg-white hover:text-foreground font-semibold text-lg px-8 py-6 transition-smooth transform hover:scale-105"
           >
             <Phone className="mr-2 h-5 w-5" />
             Contact Us
