@@ -76,7 +76,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.fullName || !formData.mobileNumber || !formData.email || !formData.address || !formData.pincode) {
       toast.error("Please fill in all required fields");
       return;
@@ -156,7 +156,6 @@ const Checkout = () => {
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert([{
-          order_number: '',
           customer_name: formData.fullName,
           customer_email: formData.email,
           delivery_mobile: formData.mobileNumber,
@@ -167,7 +166,7 @@ const Checkout = () => {
           discount_amount: discount,
           total_amount: tempOrderData.finalAmount,
           coupon_code: appliedCoupon || null,
-        }])
+        }] as any)
         .select()
         .single();
 
@@ -284,7 +283,7 @@ const Checkout = () => {
       <Header />
       <div className="flex-1 container mx-auto px-6 py-12 max-w-4xl">
         <h1 className="font-playfair text-4xl font-bold mb-8 text-center">Checkout</h1>
-        
+
         <div className="grid md:grid-cols-2 gap-8">
           <Card className="shadow-elegant">
             <CardHeader>
@@ -301,7 +300,7 @@ const Checkout = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
                   <Input
@@ -408,20 +407,20 @@ const Checkout = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>₹{totalAmount.toFixed(2)}</span>
                   </div>
-                  
+
                   {discount > 0 && (
                     <div className="flex justify-between text-success">
                       <span>Discount</span>
                       <span>-₹{discount.toFixed(2)}</span>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total</span>
                     <span>₹{finalAmount.toFixed(2)}</span>
